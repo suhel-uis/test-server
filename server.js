@@ -10,6 +10,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // In-memory user store
 let users = {};
 let clicks = 0;
+let lastDeletedAccount = null;
+let lastHeaderLog = null; // store only the last log
 
 // Helper: generate random ID
 function genId() {
@@ -21,17 +23,121 @@ app.get("/", (req, res) => {
   const session = req.cookies.SESSION;
   const user = session ? users[session] : null;
 
-  res.send(`
-    <h1>Demo Hijack App</h1>
-    ${user ? `<p>Logged in as: ${user.email}</p>` : "<p>Not logged in</p>"}
+  // Build user list
+  const userList = Object.values(users)
+    .map((u) => `<li>${u.email}</li>`)
+    .join("");
 
-    <h2>Actions</h2>
-    <p><a href="/register">Register</a></p>
-    <p><a href="/login">Login</a></p>
-    <p><a href="/logout">Logout</a></p>
-    <p><a href="/deleteAccount">Delete Account</a></p>
-    <p><a href="/adClick?id=123">Ad Click</a></p>
-    <p><a href="/logHeaders">Log Headers</a></p>
+  // Last header log
+  const headerBlock = lastHeaderLog
+    ? `<div class="log"><pre>${JSON.stringify(
+        lastHeaderLog,
+        null,
+        2
+      )}</pre></div>`
+    : "<p>No headers logged yet.</p>";
+
+  res.send(`
+    <html>
+    <head>
+      <title>Demo Hijack App</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          background: #f4f6f9;
+          color: #333;
+          margin: 0;
+          padding: 0;
+        }
+        .container {
+          max-width: 900px;
+          margin: auto;
+          padding: 20px;
+        }
+        h1 {
+          text-align: center;
+          color: #444;
+        }
+        .card {
+          background: #fff;
+          padding: 20px;
+          margin: 20px 0;
+          border-radius: 12px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+          margin-top: 0;
+          color: #555;
+        }
+        ul {
+          padding-left: 20px;
+        }
+        a {
+          display: inline-block;
+          margin: 5px 0;
+          color: #0077cc;
+          text-decoration: none;
+        }
+        a:hover {
+          text-decoration: underline;
+        }
+        .success {
+          color: green;
+        }
+        .danger {
+          color: red;
+        }
+        .log {
+          background: #272822;
+          color: #f8f8f2;
+          padding: 10px;
+          border-radius: 8px;
+          margin-bottom: 15px;
+          overflow-x: auto;
+        }
+        pre {
+          margin: 0;
+          font-family: monospace;
+          font-size: 13px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🚀 Demo App</h1>
+        <p>${
+          user
+            ? `<span class="success">✅ Logged in as: ${user.email}</span>`
+            : `<span class="danger">❌ Not logged in</span>`
+        }</p>
+
+        <div class="card">
+          <h2>Actions</h2>
+          <a href="/register">📝 Register</a><br>
+          <a href="/login">🔑 Login</a><br>
+          <a href="/logout">🚪 Logout</a><br>
+          <a href="/deleteAccount">🗑️ Delete Account</a><br>
+          <a href="/adClick?id=123">💰 Ad Click</a><br>
+          <a href="/logHeaders">📋 Log Headers</a>
+        </div>
+
+        <div class="card">
+          <h2>System Info</h2>
+          <p><b>Click Counter:</b> ${clicks}</p>
+          <p><b>Registered Emails:</b></p>
+          <ul>${userList || "<li>None</li>"}</ul>
+          <p><b>Last Deleted Account:</b> ${
+            lastDeletedAccount ? lastDeletedAccount : "None"
+          }</p>
+        </div>
+
+        <div class="card">
+          <h2>Last Logged Headers</h2>
+          ${headerBlock}
+        </div>
+      </div>
+    </body>
+    </html>
   `);
 });
 
@@ -51,7 +157,6 @@ app.post("/register", (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.send("❌ Missing fields");
 
-  // Simple unique check
   if (Object.values(users).some((u) => u.email === email)) {
     return res.send("❌ User already exists");
   }
@@ -97,6 +202,7 @@ app.get("/deleteAccount", (req, res) => {
     return res.send("❌ Not logged in");
   }
   console.log("⚠️ Account deleted for user:", users[session].email);
+  lastDeletedAccount = users[session].email;
   delete users[session];
   res.clearCookie("SESSION");
   res.send("❌ Account deleted. <a href='/'>Home</a>");
@@ -106,13 +212,14 @@ app.get("/deleteAccount", (req, res) => {
 app.get("/adClick", (req, res) => {
   clicks++;
   console.log("💰 Ad click recorded. Total:", clicks);
-  res.send(`Ad click registered. Total: ${clicks}`);
+  res.send(`Ad click registered. Total: ${clicks}. <a href="/">Home</a>`);
 });
 
 // Log headers
 app.get("/logHeaders", (req, res) => {
   console.log("📋 Headers from client:", req.headers);
-  res.send("Headers logged (check server logs).");
+  lastHeaderLog = req.headers; // overwrite with last request only
+  res.send("Headers logged. <a href='/'>See Home</a>");
 });
 
 // Start server
