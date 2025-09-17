@@ -3,9 +3,13 @@ const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
 const crypto = require("crypto");
 
+const path = require("path");
+
 const app = express();
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
+// serve static files from /public
+app.use("/static", express.static(path.join(__dirname, "public")));
 
 // In-memory user store
 let users = {};
