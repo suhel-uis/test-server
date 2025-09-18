@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Extension WS POC</title>
+  </head>
+  <body>
+    <h1>WebSocket CSWSH Test</h1>
+    <p>
+      If the extension listens on <code>ws://localhost:8081</code>, this page
+      will try to connect.
+    </p>
+
+    <pre id="log"></pre>
+
+    <script>
+      const logEl = document.getElementById("log");
+      function log(...args) {
+        logEl.textContent += "\n" + args.join(" ");
+        console.log(...args);
+      }
+
+      let ws;
+      try {
+        ws = new WebSocket("ws://localhost:8081");
+        ws.onopen = () => {
+          log("✅ Connected to ws://localhost:8081");
+          // send a benign probe message
+          ws.send(JSON.stringify({ type: "probe", ts: Date.now() }));
+        };
+        ws.onmessage = (ev) => log("📩 Message:", ev.data);
+        ws.onerror = (err) => log("❌ WebSocket error (likely blocked):", err);
+        ws.onclose = () => log("❌ Connection closed.");
+      } catch (e) {
+        log("❌ Exception:", e.message);
+      }
+    </script>
+  </body>
+</html>
